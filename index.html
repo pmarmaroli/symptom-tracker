@@ -22,7 +22,6 @@
             text-align: center;
             margin-bottom: 20px;
             font-size: 1.5rem;
-            /* Adjusted for readability on smaller screens */
         }
 
         /* Container */
@@ -40,7 +39,6 @@
         /* Input field styling */
         #newSymptom {
             width: calc(100% - 110px);
-            /* Full width except space for button */
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ddd;
@@ -66,7 +64,6 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
             width: 100%;
-            /* Full width on smaller screens */
             box-sizing: border-box;
             margin-bottom: 10px;
         }
@@ -77,10 +74,8 @@
 
         /* Delete button styling */
         .delete-button {
-            background-color: #ff6b6b;
-            margin-left: 10px;
-            width: auto;
-            /* Reset for delete button */
+            background-color: #c2b7b7;
+            width: 100%;
         }
 
         .delete-button:hover {
@@ -104,7 +99,6 @@
             border-radius: 4px;
             margin-bottom: 10px;
             flex-wrap: wrap;
-            /* Ensure buttons stack on smaller screens */
         }
 
         li button {
@@ -130,6 +124,9 @@
             padding: 10px;
             border-bottom: 1px solid #ddd;
             margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .log div:last-child {
@@ -151,14 +148,11 @@
         @media (max-width: 600px) {
             #newSymptom {
                 width: 100%;
-                /* Full width on smaller screens */
                 margin-bottom: 10px;
-                /* Spacing adjustment for mobile */
             }
 
             button {
                 font-size: 18px;
-                /* Larger button text on mobile for better tapping */
             }
 
             .container {
@@ -239,12 +233,19 @@
             renderLogs();
         }
 
+        // New function to delete an individual log entry
+        function deleteLog(logIndex) {
+            logs.splice(logIndex, 1);  // Remove log by index
+            localStorage.setItem('logs', JSON.stringify(logs));  // Update local storage
+            renderLogs();  // Re-render the logs
+        }
+
         function renderLogs() {
             const logContainer = document.getElementById('logContainer');
             logContainer.innerHTML = '';  // Clear logs
-            logs.forEach(log => {
+            logs.forEach((log, index) => {
                 const div = document.createElement('div');
-                div.innerHTML = `<strong>${log.symptom}</strong> - ${log.timestamp}`;
+                div.innerHTML = `<strong>${log.symptom}</strong> - ${log.timestamp} <button class="delete-button" onclick="deleteLog(${index})">Delete</button>`;
                 logContainer.appendChild(div);
             });
         }
