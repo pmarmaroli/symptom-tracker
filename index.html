@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -24,7 +23,6 @@
             font-size: 1.5rem;
         }
 
-        /* Container */
         .container {
             max-width: 100%;
             width: 100%;
@@ -36,8 +34,8 @@
             box-sizing: border-box;
         }
 
-        /* Input field styling */
-        #newSymptom {
+        #newSymptom,
+        #symptomSelect {
             width: calc(100% - 110px);
             padding: 10px;
             font-size: 16px;
@@ -49,11 +47,11 @@
             box-sizing: border-box;
         }
 
-        #newSymptom:focus {
+        #newSymptom:focus,
+        #symptomSelect:focus {
             border-color: #4a90e2;
         }
 
-        /* Button styling */
         button {
             padding: 10px;
             background-color: #4a90e2;
@@ -64,8 +62,8 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
             width: 100%;
-            box-sizing: border-box;
             margin-bottom: 10px;
+            box-sizing: border-box;
         }
 
         button:hover {
@@ -74,7 +72,7 @@
 
         /* Delete button styling */
         .delete-button {
-            background-color: #c2b7b7;
+            background-color: #c6bdbd;
             width: 100%;
         }
 
@@ -82,35 +80,6 @@
             background-color: #d9534f;
         }
 
-        /* List styling */
-        ul {
-            list-style: none;
-            padding-left: 0;
-            margin-top: 20px;
-        }
-
-        li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f9fafb;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-
-        li button {
-            background-color: #50e3c2;
-            margin-top: 10px;
-        }
-
-        li button:hover {
-            background-color: #2eae94;
-        }
-
-        /* Log container */
         .log {
             background-color: #eef1f5;
             padding: 15px;
@@ -119,34 +88,16 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
         }
 
-        /* Log item */
-        .log div {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        #myChart {
+            margin-top: 30px;
+            max-width: 100%;
+            height: 300px;
         }
 
-        .log div:last-child {
-            border-bottom: none;
-        }
-
-        /* Save CSV button */
-        .save-button {
-            margin-top: 20px;
-            background-color: #ff6b6b;
-            width: 100%;
-        }
-
-        .save-button:hover {
-            background-color: #d9534f;
-        }
-
-        /* Responsive Design */
         @media (max-width: 600px) {
-            #newSymptom {
+
+            #newSymptom,
+            #symptomSelect {
                 width: 100%;
                 margin-bottom: 10px;
             }
@@ -160,6 +111,14 @@
             }
         }
     </style>
+
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include Moment.js for time formatting -->
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1"></script>
+    <!-- Include the Moment.js adapter for Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+
 </head>
 
 <body>
@@ -175,8 +134,21 @@
             <button onclick="addSymptom()">Add Symptom</button>
         </div>
 
+
+
         <!-- Symptom List -->
         <ul id="symptomList"></ul>
+
+        <!-- Symptom Selector for Chart -->
+        <div>
+            <select id="symptomSelect"
+                onchange="generateChart()">
+                <option value="">Select a symptom to visualize</option>
+            </select>
+        </div>
+
+        <!-- Canvas for Chart -->
+        <canvas id="myChart"></canvas>
 
         <!-- Logs -->
         <h3>Log History:</h3>
@@ -186,6 +158,8 @@
         <!-- Save CSV Button -->
         <button class="save-button"
             onclick="downloadCSV()">Download CSV</button>
+
+
     </div>
 
     <script>
@@ -194,6 +168,7 @@
             if (localStorage.getItem('symptoms')) {
                 symptoms = JSON.parse(localStorage.getItem('symptoms'));
                 renderSymptoms();
+                populateSymptomSelector();
             }
             if (localStorage.getItem('logs')) {
                 logs = JSON.parse(localStorage.getItem('logs'));
@@ -203,6 +178,21 @@
 
         let symptoms = [];
         let logs = [];
+        let chart;  // Store chart instance
+
+        // Group logs by date and count occurrences
+        function groupLogsByDate(logs) {
+            const groupedLogs = {};
+            logs.forEach(log => {
+                const date = new Date(log.timestamp).toLocaleDateString();  // Extract the date only
+                if (!groupedLogs[date]) {
+                    groupedLogs[date] = 0;
+                }
+                groupedLogs[date] += 1;  // Count the occurrence
+            });
+            return groupedLogs;
+        }
+
 
         function addSymptom() {
             const symptomName = document.getElementById('newSymptom').value;
@@ -210,6 +200,7 @@
                 symptoms.push(symptomName);
                 localStorage.setItem('symptoms', JSON.stringify(symptoms));  // Save to local storage
                 renderSymptoms();
+                populateSymptomSelector();
                 document.getElementById('newSymptom').value = '';  // Clear input
             }
         }
@@ -233,22 +224,78 @@
             renderLogs();
         }
 
-        // New function to delete an individual log entry
-        function deleteLog(logIndex) {
-            logs.splice(logIndex, 1);  // Remove log by index
-            localStorage.setItem('logs', JSON.stringify(logs));  // Update local storage
-            renderLogs();  // Re-render the logs
-        }
-
         function renderLogs() {
             const logContainer = document.getElementById('logContainer');
             logContainer.innerHTML = '';  // Clear logs
-            logs.forEach((log, index) => {
+            logs.forEach(log => {
                 const div = document.createElement('div');
-                div.innerHTML = `<strong>${log.symptom}</strong> - ${log.timestamp} <button class="delete-button" onclick="deleteLog(${index})">Delete</button>`;
+                div.innerHTML = `<strong>${log.symptom}</strong> - ${log.timestamp}`;
                 logContainer.appendChild(div);
             });
         }
+
+        // Populate the symptom selector dropdown
+        function populateSymptomSelector() {
+            const symptomSelect = document.getElementById('symptomSelect');
+            symptomSelect.innerHTML = `<option value="">Select a symptom to visualize</option>`; // Reset options
+            symptoms.forEach((symptom, index) => {
+                const option = document.createElement('option');
+                option.value = symptom;
+                option.innerText = symptom;
+                symptomSelect.appendChild(option);
+            });
+        }
+
+        // Generate the chart for the selected symptom
+        function generateChart() {
+            const symptomSelect = document.getElementById('symptomSelect').value;
+            if (!symptomSelect) return;
+
+            const filteredLogs = logs.filter(log => log.symptom === symptomSelect);
+            const groupedLogs = groupLogsByDate(filteredLogs);
+
+            const dates = Object.keys(groupedLogs);  // Get the unique dates
+            const occurrences = Object.values(groupedLogs);  // Get the occurrences per date
+
+            const ctx = document.getElementById('myChart').getContext('2d');
+            if (chart) chart.destroy();  // Destroy previous chart instance if exists
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,  // Use dates as x-axis labels
+                    datasets: [{
+                        label: `${symptomSelect} Logs`,
+                        data: occurrences,  // Use occurrences as y-axis values
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Occurrences'
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
 
         // Function to delete a symptom and its logs
         function deleteSymptom(index) {
@@ -264,6 +311,7 @@
 
             // Re-render the updated lists
             renderSymptoms();
+            populateSymptomSelector();
             renderLogs();
         }
 
