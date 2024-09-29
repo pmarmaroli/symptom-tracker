@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+    <title>Symptom Tracker</title>
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h2,
+        h3 {
+            color: #4a90e2;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* Input field styling */
+        #newSymptom {
+            width: calc(100% - 100px);
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #newSymptom:focus {
+            border-color: #4a90e2;
+        }
+
+        /* Button styling */
+        button {
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ABD;
+        }
+
+        /* Delete button styling */
+        .delete-button {
+            background-color: #ff6b6b;
+            margin-left: 10px;
+        }
+
+        .delete-button:hover {
+            background-color: #d9534f;
+        }
+
+        /* List styling */
+        ul {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9fafb;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        li button {
+            background-color: #50e3c2;
+        }
+
+        li button:hover {
+            background-color: #2eae94;
+        }
+
+        /* Log container */
+        .log {
+            background-color: #eef1f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Log item */
+        .log div {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 5px;
+        }
+
+        .log div:last-child {
+            border-bottom: none;
+        }
+
+        /* Save CSV button */
+        .save-button {
+            margin-top: 20px;
+            background-color: #ff6b6b;
+        }
+
+        .save-button:hover {
+            background-color: #d9534f;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Symptom Tracker</h2>
+
+        <!-- Input and Button for adding symptoms -->
+        <div>
+            <input type="text"
+                id="newSymptom"
+                placeholder="Enter new symptom">
+            <button onclick="addSymptom()">Add Symptom</button>
+        </div>
+
+        <!-- Symptom List -->
+        <ul id="symptomList"></ul>
+
+        <!-- Logs -->
+        <h3>Log History:</h3>
+        <div id="logContainer"
+            class="log"></div>
+
+        <!-- Save CSV Button -->
+        <button class="save-button"
+            onclick="downloadCSV()">Download CSV</button>
+    </div>
+
+    <script>
+        // Load data from local storage when the page loads
+        window.onload = function () {
+            if (localStorage.getItem('symptoms')) {
+                symptoms = JSON.parse(localStorage.getItem('symptoms'));
+                renderSymptoms();
+            }
+            if (localStorage.getItem('logs')) {
+                logs = JSON.parse(localStorage.getItem('logs'));
+                renderLogs();
+            }
+        }
+
+        let symptoms = [];
+        let logs = [];
+
+        function addSymptom() {
+            const symptomName = document.getElementById('newSymptom').value;
+            if (symptomName) {
+                symptoms.push(symptomName);
+                localStorage.setItem('symptoms', JSON.stringify(symptoms));  // Save to local storage
+                renderSymptoms();
+                document.getElementById('newSymptom').value = '';  // Clear input
+            }
+        }
+
+        function renderSymptoms() {
+            const symptomList = document.getElementById('symptomList');
+            symptomList.innerHTML = '';  // Clear list
+            symptoms.forEach((symptom, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${symptom} 
+                    <button onclick="logSymptom(${index})">Log Date & Time</button>
+                    <button class="delete-button" onclick="deleteSymptom(${index})">Delete Symptom</button>`;
+                symptomList.appendChild(li);
+            });
+        }
+
+        function logSymptom(index) {
+            const timestamp = new Date().toLocaleString();
+            logs.push({ symptom: symptoms[index], timestamp });
+            localStorage.setItem('logs', JSON.stringify(logs));  // Save logs to local storage
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';  // Clear logs
+            logs.forEach(log => {
+                const div = document.createElement('div');
+                div.innerHTML = `<strong>${log.symptom}</strong> - ${log.timestamp}`;
+                logContainer.appendChild(div);
+            });
+        }
+
+        // Function to delete a symptom and its logs
+        function deleteSymptom(index) {
+            const symptomToDelete = symptoms[index];
+
+            // Remove the symptom from the symptoms array
+            symptoms.splice(index, 1);
+            localStorage.setItem('symptoms', JSON.stringify(symptoms));  // Update local storage for symptoms
+
+            // Remove all associated logs for the deleted symptom
+            logs = logs.filter(log => log.symptom !== symptomToDelete);
+            localStorage.setItem('logs', JSON.stringify(logs));  // Update local storage for logs
+
+            // Re-render the updated lists
+            renderSymptoms();
+            renderLogs();
+        }
+
+        // Function to download CSV
+        function downloadCSV() {
+            if (logs.length === 0) {
+                alert("No logs to save!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Symptom,Timestamp\n";
+            logs.forEach(log => {
+                const row = `${log.symptom},${log.timestamp}`;
+                csvContent += row + "\n";
+            });
+
+            // Create a downloadable link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "symptom_logs.csv");
+            document.body.appendChild(link);
+
+            // Trigger the download
+            link.click();
+
+            // Remove the link after the download
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+
+</html>
