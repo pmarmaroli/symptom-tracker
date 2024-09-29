@@ -77,7 +77,17 @@
         }
 
         .delete-button:hover {
-            background-color: #d9534f;
+            background-color: #c6bdbd;
+        }
+
+        /* Delete button styling */
+        .log-button {
+            background-color: #50e3c2;
+            width: 100%;
+        }
+
+        .log-button:hover {
+            background-color: #50e3c2;
         }
 
         .log {
@@ -211,7 +221,7 @@
             symptoms.forEach((symptom, index) => {
                 const li = document.createElement('li');
                 li.innerHTML = `${symptom} 
-                    <button onclick="logSymptom(${index})">Log Date & Time</button>
+                    <button class="log-button" onclick="logSymptom(${index})">Log Date & Time</button>
                     <button class="delete-button" onclick="deleteSymptom(${index})">Delete Symptom</button>`;
                 symptomList.appendChild(li);
             });
@@ -297,9 +307,17 @@
         }
 
 
-        // Function to delete a symptom and its logs
+        // Function to delete a symptom and its logs with confirmation
         function deleteSymptom(index) {
             const symptomToDelete = symptoms[index];
+
+            // Show confirmation dialog
+            const confirmation = confirm(`Are you sure you want to delete the symptom "${symptomToDelete}" and all associated logs?`);
+
+            if (!confirmation) {
+                // If user cancels, do nothing
+                return;
+            }
 
             // Remove the symptom from the symptoms array
             symptoms.splice(index, 1);
@@ -314,6 +332,7 @@
             populateSymptomSelector();
             renderLogs();
         }
+
 
         // Function to download CSV
         function downloadCSV() {
